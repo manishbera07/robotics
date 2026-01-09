@@ -33,14 +33,12 @@ export function Footer() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold"
-                style={{
-                  background: `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
-                  color: "#030303",
-                }}
-              >
-                RC
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
+                <img
+                  src="/Logo Symbol_Robotics Club HITK.png"
+                  alt="Robotics Club Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <p className="font-bold" style={{ color: accentColor }}>

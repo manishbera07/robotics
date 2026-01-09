@@ -36,14 +36,12 @@ export function Navbar() {
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
-                style={{
-                  background: `linear-gradient(135deg, ${accentColor}, ${theme === "cyber" ? "#00ff88" : "#888"})`,
-                  color: "#030303",
-                }}
-              >
-                RC
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+                <img
+                  src="/Logo Symbol_Robotics Club HITK.png"
+                  alt="Robotics Club Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="hidden sm:block">
                 <p className="text-xs uppercase tracking-wider opacity-60">Robotics Club</p>
