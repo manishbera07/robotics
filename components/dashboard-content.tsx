@@ -74,41 +74,53 @@ export function DashboardContent({ user }: DashboardContentProps) {
 
   const fetchRegisteredEvents = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: regs, error: regsError } = await supabase
         .from('event_registrations')
-        .select(`
-          id,
-          registered_at,
-          events (
-            id,
-            title,
-            description,
-            event_date,
-            location,
-            image_url,
-            event_type
-          )
-        `)
+        .select('id, registered_at, event_id')
         .eq('user_id', user.id)
         .order('registered_at', { ascending: false })
-      
-      if (error) {
-        console.error('Error fetching registered events:', error)
-        // If table doesn't exist, just set empty array
+
+      if (regsError) {
+        console.error('Error fetching registered events:', regsError?.message ?? regsError)
         setRegisteredEvents([])
         return
       }
-      
-      // Filter to show only upcoming/ongoing events (not past events)
+
+      const eventIds = Array.from(new Set((regs ?? []).map((r: any) => r.event_id).filter(Boolean)))
+      let eventsById: Record<string, any> = {}
+
+      if (eventIds.length > 0) {
+        const { data: events, error: eventsError } = await supabase
+          .from('events')
+          .select('id, title, description, event_date, location, image_url, event_type')
+          .in('id', eventIds)
+
+        if (eventsError) {
+          console.error('Error fetching events list:', eventsError?.message ?? eventsError)
+        } else {
+          eventsById = (events ?? []).reduce((acc: any, ev: any) => {
+            acc[ev.id] = ev
+            return acc
+          }, {})
+        }
+      }
+
+      const combined = (regs ?? []).map((reg: any) => ({
+        ...reg,
+        events: eventsById[reg.event_id] ?? null,
+      }))
+
       const now = new Date()
-      const upcomingEvents = (data || []).filter((reg: any) => {
-        const eventDate = new Date(reg.events.event_date)
+      const upcomingEvents = combined.filter((reg: any) => {
+        const dateStr = reg.events?.event_date
+        if (!dateStr) return false
+        const eventDate = new Date(dateStr)
         return eventDate >= now
       })
-      
+
       setRegisteredEvents(upcomingEvents)
-    } catch (err) {
-      console.error('Error fetching registered events:', err)
+    } catch (err: any) {
+      console.error('Error fetching registered events:', err?.message ?? err)
       setRegisteredEvents([])
     } finally {
       setEventsLoading(false)
