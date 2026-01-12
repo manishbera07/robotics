@@ -1,33 +1,48 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, memo } from "react"
 import { motion } from "framer-motion"
 import { useTheme } from "./theme-provider"
 
-export function RobotWatcher() {
+// Throttle helper for performance
+const throttle = (func: Function, limit: number) => {
+  let inThrottle: boolean
+  return function (this: any, ...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
+  }
+}
+
+export const RobotWatcher = memo(function RobotWatcher() {
   const { accentColor, secondaryColor } = useTheme()
   const [eyePosition, setEyePosition] = useState({ x: 0, y: 0 })
   const [isBlinking, setIsBlinking] = useState(false)
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    const robotX = typeof window !== "undefined" ? window.innerWidth - 60 : 0
-    const robotY = typeof window !== "undefined" ? window.innerHeight - 80 : 0
-    const deltaX = e.clientX - robotX
-    const deltaY = e.clientY - robotY
-    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-    const maxMove = 4
+  const handleMouseMove = useCallback(
+    throttle((e: MouseEvent) => {
+      const robotX = typeof window !== "undefined" ? window.innerWidth - 60 : 0
+      const robotY = typeof window !== "undefined" ? window.innerHeight - 80 : 0
+      const deltaX = e.clientX - robotX
+      const deltaY = e.clientY - robotY
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+      const maxMove = 4
 
-    if (distance > 0) {
-      setEyePosition({
-        x: (deltaX / distance) * Math.min(maxMove, distance / 50),
-        y: (deltaY / distance) * Math.min(maxMove, distance / 50),
-      })
-    }
-  }, [])
+      if (distance > 0) {
+        setEyePosition({
+          x: (deltaX / distance) * Math.min(maxMove, distance / 50),
+          y: (deltaY / distance) * Math.min(maxMove, distance / 50),
+        })
+      }
+    }, 50),
+    [],
+  )
 
   useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove)
-    return () => window.removeEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMouseMove as any)
+    return () => window.removeEventListener("mousemove", handleMouseMove as any)
   }, [handleMouseMove])
 
   useEffect(() => {
@@ -178,4 +193,4 @@ export function RobotWatcher() {
       </motion.div>
     </motion.div>
   )
-}
+})

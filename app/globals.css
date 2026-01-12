@@ -112,19 +112,25 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 }
 
-/* Custom animations */
+/* Custom animations - GPU Accelerated */
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0px);
+    transform: translateY(0px) translateZ(0);
   }
   50% {
-    transform: translateY(-20px);
+    transform: translateY(-20px) translateZ(0);
   }
 }
 
@@ -140,29 +146,29 @@
 
 @keyframes scan-line {
   0% {
-    transform: translateY(-100%);
+    transform: translateY(-100%) translateZ(0);
   }
   100% {
-    transform: translateY(100vh);
+    transform: translateY(100vh) translateZ(0);
   }
 }
 
 @keyframes glitch {
   0%,
   100% {
-    transform: translate(0);
+    transform: translate(0) translateZ(0);
   }
   20% {
-    transform: translate(-2px, 2px);
+    transform: translate(-2px, 2px) translateZ(0);
   }
   40% {
-    transform: translate(-2px, -2px);
+    transform: translate(-2px, -2px) translateZ(0);
   }
   60% {
-    transform: translate(2px, 2px);
+    transform: translate(2px, 2px) translateZ(0);
   }
   80% {
-    transform: translate(2px, -2px);
+    transform: translate(2px, -2px) translateZ(0);
   }
 }
 
@@ -177,19 +183,26 @@
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+  will-change: transform;
 }
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+  will-change: box-shadow;
 }
 .animate-glitch {
   animation: glitch 0.3s ease-in-out infinite;
+  will-change: transform;
 }
 
-/* Glass effect */
+/* Glass effect - Optimized */
 .glass {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  transform: translateZ(0);
+  will-change: background, border-color;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .glass-hover:hover {
@@ -221,17 +234,12 @@
   color: #ffffff;
 }
 
-/* Noise overlay */
+/* Noise overlay - Disabled for cleaner look */
 .noise-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-  z-index: 9999;
+  display: none;
 }
 
-/* Scan line effect */
+/* Scan line effect - GPU Accelerated */
 .scan-line {
   position: fixed;
   inset: 0;
@@ -240,4 +248,131 @@
   height: 100px;
   animation: scan-line 8s linear infinite;
   z-index: 9998;
+  will-change: transform;
+  transform: translateZ(0);
 }
+
+/* Performance optimizations for mobile */
+@media (max-width: 768px) {
+  .noise-overlay {
+    opacity: 0.01;
+  }
+  
+  .scan-line {
+    display: none;
+  }
+}
+
+/* Optimize transitions and animations */
+* {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .noise-overlay,
+  .scan-line {
+    display: none;
+  }
+}
+
+/* Optimize touch targets for mobile */
+@media (pointer: coarse) {
+  button,
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Hardware acceleration hints */
+.glass,
+button,
+a,
+[role="button"] {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Responsive optimizations */
+@media (max-width: 640px) {
+  /* Improve text visibility on small screens */
+  .text-xs {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+  
+  /* Ensure minimum sizes for touch targets */
+  button,
+  a[role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Optimize spacing */
+  .gap-2 {
+    gap: calc(var(--spacing) * 1.5);
+  }
+  
+  /* Prevent text from being cut off */
+  .uppercase {
+    letter-spacing: 0.05em;
+  }
+  
+  /* Ensure badges are visible */
+  .glass {
+    backdrop-filter: blur(16px);
+  }
+  
+  /* Make small text more readable */
+  .opacity-70 {
+    opacity: 0.85;
+  }
+  
+  .opacity-50 {
+    opacity: 0.7;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  /* Medium screens optimization */
+  .hidden.sm\:block {
+    display: block !important;
+  }
+  
+  /* Improve readability */
+  .text-xs {
+    font-size: 0.75rem;
+  }
+}
+
+/* Ensure visibility of important elements */
+.truncate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Improve flexbox behavior on small screens */
+@media (max-width: 768px) {
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+  
+  .overflow-x-hidden {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+}
+
+

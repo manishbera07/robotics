@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect, useCallback, memo } from "react"
+import { motion, useScroll, useTransform } from "framer-motion"
 import { useTheme } from "./theme-provider"
 import { Zap, ChevronDown } from "lucide-react"
 import Link from "next/link"
@@ -9,10 +9,12 @@ import Link from "next/link"
 const targetText = "BUILDING THE FUTURE"
 const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"
 
-export function HeroSection() {
+export const HeroSection = memo(function HeroSection() {
   const { theme, accentColor, secondaryColor } = useTheme()
   const [displayText, setDisplayText] = useState("")
   const [isDecoding, setIsDecoding] = useState(true)
+  const { scrollY } = useScroll()
+  const yTransform = useTransform(scrollY, [0, 300], [0, 100])
 
   const decodeText = useCallback(() => {
     let iteration = 0
@@ -45,43 +47,54 @@ export function HeroSection() {
   }, [decodeText])
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 pt-20 pb-10">
-      {/* Gradient orbs */}
-      <div
+    <section className="relative min-h-screen flex items-center justify-center px-4 pt-20 pb-10 overflow-hidden">
+      {/* Animated gradient orbs with parallax - Optimized */}
+      <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-        style={{ background: accentColor }}
+        style={{ 
+          background: accentColor,
+          y: useTransform(scrollY, [0, 300], [0, 50]),
+          willChange: 'transform'
+        }}
       />
-      <div
+      <motion.div
         className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-10 pointer-events-none"
-        style={{ background: secondaryColor }}
+        style={{ 
+          background: secondaryColor,
+          y: useTransform(scrollY, [0, 300], [0, -50]),
+          willChange: 'transform'
+        }}
       />
 
       <div className="max-w-6xl mx-auto text-center relative z-10">
         <motion.div
+          style={{ y: yTransform }}
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Badge */}
           <motion.div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 mt-12"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full glass mb-6 sm:mb-8 mt-8 sm:mt-12"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: secondaryColor }} />
-            <span className="text-xs uppercase tracking-widest opacity-70">Heritage Institute of Technology</span>
+            <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full animate-pulse flex-shrink-0" style={{ background: secondaryColor }} />
+            <span className="text-xs sm:text-sm uppercase tracking-wide sm:tracking-wider opacity-90">
+              Heritage Institute of Technology
+            </span>
           </motion.div>
 
           {/* Main headline */}
           <h1
-            className="text-4xl md:text-6xl lg:text-8xl font-bold tracking-tighter mb-4"
+            className="text-3xl sm:text-4xl md:text-6xl lg:text-8xl font-bold tracking-tighter mb-4 px-2"
             style={{ fontFamily: "var(--font-orbitron)", color: accentColor }}
           >
             {displayText}
             {isDecoding && (
               <motion.span
-                className="inline-block w-1 md:w-2 h-10 md:h-16 lg:h-20 ml-2 align-middle"
+                className="inline-block w-1 sm:w-1.5 md:w-2 h-8 sm:h-10 md:h-16 lg:h-20 ml-1 sm:ml-2 align-middle"
                 style={{ backgroundColor: secondaryColor }}
                 animate={{ opacity: [1, 0] }}
                 transition={{ duration: 0.5, repeat: Number.POSITIVE_INFINITY }}
@@ -91,7 +104,7 @@ export function HeroSection() {
 
           {/* Subtitle */}
           <motion.h2
-            className="text-xl md:text-3xl font-light tracking-wide mb-6 opacity-80 lg:text-3xl"
+            className="text-base sm:text-lg md:text-2xl lg:text-3xl font-light tracking-wide mb-6 opacity-80 px-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
             transition={{ delay: 0.5 }}
@@ -101,7 +114,7 @@ export function HeroSection() {
 
           {/* Description */}
           <motion.p
-            className="text-sm md:text-base opacity-50 mb-12 max-w-2xl mx-auto tracking-wide leading-relaxed"
+            className="text-xs sm:text-sm md:text-base opacity-50 mb-12 max-w-2xl mx-auto tracking-wide leading-relaxed px-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.5 }}
             transition={{ delay: 0.7 }}
@@ -112,14 +125,14 @@ export function HeroSection() {
 
           {/* CTA Buttons */}
           <motion.div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.9 }}
           >
-            <Link href="/events">
+            <Link href="/events" className="w-full sm:w-auto">
               <motion.button
-                className="group relative px-8 py-4 rounded-2xl text-sm uppercase tracking-widest overflow-hidden"
+                className="w-full sm:w-auto group relative px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-xs sm:text-sm uppercase tracking-widest overflow-hidden"
                 style={{
                   background: `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
                   color: "#030303",
@@ -127,8 +140,8 @@ export function HeroSection() {
                 whileHover={{ scale: 1.05, boxShadow: `0 0 40px ${accentColor}50` }}
                 whileTap={{ scale: 0.95 }}
               >
-                <span className="relative z-10 flex items-center gap-3 justify-center font-bold">
-                  <Zap size={18} />
+                <span className="relative z-10 flex items-center gap-2 sm:gap-3 justify-center font-bold">
+                  <Zap size={16} className="sm:w-[18px] sm:h-[18px]" />
                   EXPLORE EVENTS
                 </span>
                 <motion.div
@@ -139,9 +152,9 @@ export function HeroSection() {
               </motion.button>
             </Link>
 
-            <Link href="/auth/sign-up">
+            <Link href="/auth/sign-up" className="w-full sm:w-auto">
               <motion.button
-                className="px-8 py-4 rounded-2xl text-sm uppercase tracking-widest glass glass-hover"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-xs sm:text-sm uppercase tracking-widest glass glass-hover"
                 style={{ color: accentColor, border: `1px solid ${accentColor}30` }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -153,7 +166,7 @@ export function HeroSection() {
 
           {/* Stats */}
           <motion.div
-            className="mt-20 grid grid-cols-3 gap-8 max-w-xl mx-auto"
+            className="mt-16 sm:mt-20 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-xl mx-auto px-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.1 }}
@@ -170,10 +183,10 @@ export function HeroSection() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.2 + index * 0.1 }}
               >
-                <p className="text-2xl md:text-4xl font-bold" style={{ color: accentColor }}>
+                <p className="text-xl sm:text-2xl md:text-4xl font-bold" style={{ color: accentColor }}>
                   {stat.value}
                 </p>
-                <p className="text-xs uppercase tracking-wider opacity-50 mt-1">{stat.label}</p>
+                <p className="text-[10px] sm:text-xs uppercase tracking-wider opacity-50 mt-1">{stat.label}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -193,4 +206,4 @@ export function HeroSection() {
       </div>
     </section>
   )
-}
+})

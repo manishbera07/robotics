@@ -111,7 +111,7 @@ export function UserMenu({ accentColor }: UserMenuProps) {
             <Link href="/dashboard" onClick={() => setOpen(false)}>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5">
                 <Home size={16} />
-                <span className="text-sm">Profile</span>
+                <span className="text-sm">Dashboard</span>
               </div>
             </Link>
             <button

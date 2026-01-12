@@ -7,7 +7,6 @@ import { Footer } from "@/components/footer"
 import { ParticleNetwork } from "@/components/particle-network"
 import { RobotWatcher } from "@/components/robot-watcher"
 import { Gamepad2, Trophy, ArrowLeft } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 // Game Components
 import { MemoryMatrix } from "@/components/games/memory-matrix"
@@ -56,38 +55,28 @@ export default function ArcadePage() {
   const { accentColor, secondaryColor } = useTheme()
   const [currentGame, setCurrentGame] = useState<GameType>("menu")
   const [highScores, setHighScores] = useState<Record<string, number>>({})
-  const supabase = createClient()
-  const [userId, setUserId] = useState<string | null>(null)
 
+  // Load high scores from localStorage
   useEffect(() => {
-    async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUserId(user.id)
+    const savedScores = localStorage.getItem('gameHighScores')
+    if (savedScores) {
+      try {
+        setHighScores(JSON.parse(savedScores))
+      } catch (e) {
+        console.error('Error loading high scores:', e)
       }
     }
-    getUser()
   }, [])
 
-  const updateHighScore = async (gameId: string, score: number) => {
-    setHighScores((prev) => ({
-      ...prev,
-      [gameId]: Math.max(prev[gameId] || 0, score),
-    }))
-
-    // Save to database if user is logged in
-    if (userId) {
-      try {
-        await supabase.from('game_scores').insert({
-          user_id: userId,
-          game_name: gameId,
-          score: score,
-          completed_at: new Date().toISOString(),
-        })
-      } catch (error) {
-        console.error('Error saving score:', error)
+  const updateHighScore = (gameId: string, score: number) => {
+    setHighScores((prev) => {
+      const newScores = {
+        ...prev,
+        [gameId]: Math.max(prev[gameId] || 0, score),
       }
-    }
+      localStorage.setItem('gameHighScores', JSON.stringify(newScores))
+      return newScores
+    })
   }
 
   return (
@@ -197,27 +186,10 @@ export default function ArcadePage() {
                     </motion.div>
                   ))}
                 </div>
-
-                {/* Global Leaderboard Teaser */}
-                <motion.div
-                  className="mt-12 glass rounded-3xl p-8 text-center"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Trophy size={32} style={{ color: accentColor }} className="mx-auto mb-4" />
-                  <h3 className="text-xl font-bold mb-2" style={{ color: accentColor }}>
-                    Global Leaderboard Coming Soon
-                  </h3>
-                  <p className="text-sm opacity-50 max-w-md mx-auto">
-                    Compete with other club members and see your rank on the global leaderboard. Login to save your
-                    scores!
-                  </p>
-                </motion.div>
               </motion.div>
             ) : (
               <motion.div
-                key={currentGame}
+                key={`game-${currentGame}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -225,28 +197,46 @@ export default function ArcadePage() {
                 {/* Back Button */}
                 <motion.button
                   onClick={() => setCurrentGame("menu")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl glass text-sm mb-8"
+                  className="mb-8 flex items-center gap-2 px-4 py-2 rounded-xl glass"
                   style={{ color: accentColor }}
-                  whileHover={{ scale: 1.05, x: -5 }}
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   <ArrowLeft size={18} />
-                  Back to Games
+                  Back to Menu
                 </motion.button>
 
-                {/* Game Component */}
-                {currentGame === "memory-matrix" && (
-                  <MemoryMatrix onScoreUpdate={(score) => updateHighScore("memory-matrix", score)} />
-                )}
-                {currentGame === "reaction-test" && (
-                  <ReactionTest onScoreUpdate={(score) => updateHighScore("reaction-test", score)} />
-                )}
-                {currentGame === "pattern-pulse" && (
-                  <PatternPulse onScoreUpdate={(score) => updateHighScore("pattern-pulse", score)} />
-                )}
-                {currentGame === "binary-breaker" && (
-                  <BinaryBreaker onScoreUpdate={(score) => updateHighScore("binary-breaker", score)} />
-                )}
+                {/* Game Container */}
+                <motion.div
+                  className="glass rounded-3xl p-8"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {currentGame === "memory-matrix" && (
+                    <MemoryMatrix
+                      onScore={(score) => updateHighScore(currentGame, score)}
+                      currentHighScore={highScores[currentGame] || 0}
+                    />
+                  )}
+                  {currentGame === "reaction-test" && (
+                    <ReactionTest
+                      onScore={(score) => updateHighScore(currentGame, score)}
+                      currentHighScore={highScores[currentGame] || 0}
+                    />
+                  )}
+                  {currentGame === "pattern-pulse" && (
+                    <PatternPulse
+                      onScore={(score) => updateHighScore(currentGame, score)}
+                      currentHighScore={highScores[currentGame] || 0}
+                    />
+                  )}
+                  {currentGame === "binary-breaker" && (
+                    <BinaryBreaker
+                      onScore={(score) => updateHighScore(currentGame, score)}
+                      currentHighScore={highScores[currentGame] || 0}
+                    />
+                  )}
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>

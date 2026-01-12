@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef, useCallback, memo } from "react"
 import { useTheme } from "./theme-provider"
 
 interface Particle {
@@ -12,7 +12,19 @@ interface Particle {
   opacity: number
 }
 
-export function ParticleNetwork() {
+// Throttle helper
+const throttle = (func: Function, limit: number) => {
+  let inThrottle: boolean
+  return function (this: any, ...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
+  }
+}
+
+export const ParticleNetwork = memo(function ParticleNetwork() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mouseRef = useRef({ x: 0, y: 0 })
   const { accentColor, secondaryColor } = useTheme()
@@ -21,11 +33,12 @@ export function ParticleNetwork() {
     const canvas = canvasRef.current
     if (!canvas) return null
 
-    const ctx = canvas.getContext("2d")
+    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true })
     if (!ctx) return null
 
     let particles: Particle[] = []
     let animationId: number
+    let lastTime = performance.now()
 
     const resize = () => {
       canvas.width = window.innerWidth
@@ -34,33 +47,44 @@ export function ParticleNetwork() {
     }
 
     const initParticles = () => {
-      const particleCount = Math.floor((canvas.width * canvas.height) / 20000)
+      // Reduce particle count for better performance
+      const particleCount = Math.floor((canvas.width * canvas.height) / 30000)
       particles = []
-      for (let i = 0; i < Math.min(particleCount, 80); i++) {
+      for (let i = 0; i < Math.min(particleCount, 50); i++) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          radius: Math.random() * 2 + 1,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          radius: Math.random() * 1.5 + 0.5,
           opacity: Math.random() * 0.5 + 0.2,
         })
       }
     }
 
     const draw = () => {
+      const currentTime = performance.now()
+      const deltaTime = currentTime - lastTime
+      
+      // Limit frame rate to 60fps for consistent performance
+      if (deltaTime < 16) {
+        animationId = requestAnimationFrame(draw)
+        return
+      }
+      
+      lastTime = currentTime
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       particles.forEach((p, i) => {
-        // Mouse interaction
+        // Mouse interaction - simplified
         const dx = mouseRef.current.x - p.x
         const dy = mouseRef.current.y - p.y
         const dist = Math.sqrt(dx * dx + dy * dy)
 
-        if (dist < 150) {
-          const force = (150 - dist) / 150
-          p.vx -= (dx / dist) * force * 0.02
-          p.vy -= (dy / dist) * force * 0.02
+        if (dist < 120) {
+          const force = (120 - dist) / 120
+          p.vx -= (dx / dist) * force * 0.015
+          p.vy -= (dy / dist) * force * 0.015
         }
 
         // Update position
@@ -77,39 +101,31 @@ export function ParticleNetwork() {
         p.vx *= 0.99
         p.vy *= 0.99
 
-        // Draw particle with glow
-        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 3)
-        gradient.addColorStop(0, `${accentColor}`)
-        gradient.addColorStop(0.5, `${accentColor}40`)
-        gradient.addColorStop(1, "transparent")
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius * 3, 0, Math.PI * 2)
-        ctx.fillStyle = gradient
-        ctx.fill()
-
+        // Draw particle - simplified for performance
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
         ctx.fillStyle = accentColor
+        ctx.globalAlpha = p.opacity
         ctx.fill()
+        ctx.globalAlpha = 1
 
-        // Draw connections
+        // Draw connections - optimized
         for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j]
           const dx = p.x - p2.x
           const dy = p.y - p2.y
           const distance = Math.sqrt(dx * dx + dy * dy)
 
-          if (distance < 150) {
-            const opacity = ((150 - distance) / 150) * 0.15
+          if (distance < 120) {
+            const opacity = ((120 - distance) / 120) * 0.2
             ctx.beginPath()
             ctx.moveTo(p.x, p.y)
             ctx.lineTo(p2.x, p2.y)
-            ctx.strokeStyle = `${secondaryColor}${Math.floor(opacity * 255)
-              .toString(16)
-              .padStart(2, "0")}`
+            ctx.strokeStyle = secondaryColor
+            ctx.globalAlpha = opacity
             ctx.lineWidth = 0.5
             ctx.stroke()
+            ctx.globalAlpha = 1
           }
         }
       })
@@ -117,19 +133,19 @@ export function ParticleNetwork() {
       animationId = requestAnimationFrame(draw)
     }
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = throttle((e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY }
-    }
+    }, 50)
 
     resize()
     draw()
 
-    window.addEventListener("resize", resize)
-    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("resize", throttle(resize, 250))
+    window.addEventListener("mousemove", handleMouseMove as any)
 
     return () => {
       window.removeEventListener("resize", resize)
-      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mousemove", handleMouseMove as any)
       cancelAnimationFrame(animationId)
     }
   }, [accentColor, secondaryColor])
@@ -139,5 +155,5 @@ export function ParticleNetwork() {
     return () => cleanup?.()
   }, [animate])
 
-  return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
-}
+  return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" style={{ willChange: 'transform' }} />
+})

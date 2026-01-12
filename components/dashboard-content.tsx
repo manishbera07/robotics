@@ -26,7 +26,9 @@ import {
   Home,
   Users,
   Gamepad2,
+  Award,
 } from "lucide-react"
+import { calculateRank, calculateXPFromScore } from "@/lib/user-stats"
 
 interface DashboardContentProps {
   user: User
@@ -56,20 +58,28 @@ export function DashboardContent({ user }: DashboardContentProps) {
   const [gameScores, setGameScores] = useState<GameScore[]>([])
   const [leaderboards, setLeaderboards] = useState<Record<string, LeaderboardEntry[]>>({})
   const [scoresLoading, setScoresLoading] = useState(true)
+  const [achievements, setAchievements] = useState<any[]>([])
+  const [achievementsLoading, setAchievementsLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
   const userName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Profile"
   const gamesList = ["Memory Matrix", "Reaction Test", "Pattern Pulse", "Binary Breaker"]
 
-  // Calculate XP based on activities
-  const userXP = (gameScores.length * 10) + (registeredEvents.length * 50)
-  const maxXP = 1000
+  // Calculate XP/rank from actual scores and participation
+  const scoreXP = gameScores.reduce((sum, g) => sum + calculateXPFromScore(g.score), 0)
+  const eventXP = registeredEvents.length * 50
+  const userXP = scoreXP + eventXP
+  const maxXP = Math.max(1000, userXP + 200)
+  const userRank = calculateRank(userXP)
+  const highestScore = gameScores.length > 0 ? Math.max(...gameScores.map((g) => g.score)) : 0
+  const averageScore = gameScores.length > 0 ? Math.round(gameScores.reduce((a, b) => a + b.score, 0) / gameScores.length) : 0
 
   useEffect(() => {
     fetchRegisteredEvents()
     fetchGameScores()
     fetchLeaderboards()
+    fetchAchievements()
   }, [])
 
   const fetchRegisteredEvents = async () => {
@@ -129,22 +139,43 @@ export function DashboardContent({ user }: DashboardContentProps) {
 
   const fetchGameScores = async () => {
     try {
-      const { data, error } = await supabase
+      // Try to fetch with completed_at; fall back if column doesn't exist
+      const baseQuery = supabase
         .from('game_scores')
-        .select('*')
+        .select('id, user_id, game_name, score, completed_at')
         .eq('user_id', user.id)
-        .order('score', { ascending: false })
-        .order('completed_at', { ascending: false })
+        .order('id', { ascending: false })
+
+      const { data, error } = await baseQuery
+
+      if (error && error.code === '42703') {
+        // Column missing; retry without completed_at
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('game_scores')
+          .select('id, user_id, game_name, score')
+          .eq('user_id', user.id)
+          .order('id', { ascending: false })
+
+        if (fallbackError) {
+          console.error('Error fetching game scores:', fallbackError?.message ?? fallbackError)
+          setGameScores([])
+          return
+        }
+
+        setGameScores(fallbackData || [])
+        return
+      }
 
       if (error) {
-        console.error('Error fetching game scores:', error)
-        // If table doesn't exist, just set empty array
+        console.error('Error fetching game scores:', error?.message ?? error)
+        // If table doesn't exist or RLS blocks it, just set empty array
         setGameScores([])
         return
       }
+
       setGameScores(data || [])
-    } catch (err) {
-      console.error('Error fetching game scores:', err)
+    } catch (err: any) {
+      console.error('Error fetching game scores:', err?.message ?? err)
       setGameScores([])
     } finally {
       setScoresLoading(false)
@@ -158,12 +189,16 @@ export function DashboardContent({ user }: DashboardContentProps) {
       for (const game of gamesList) {
         const { data, error } = await supabase
           .from('game_scores')
-          .select('user_id, game_name, score, completed_at')
+          .select('user_id, game_name, score')
           .eq('game_name', game)
           .order('score', { ascending: false })
           .limit(5)
 
-        if (error) throw error
+        if (error) {
+          console.error(`Error fetching leaderboard for ${game}:`, error?.message ?? error)
+          leaderboardData[game] = []
+          continue
+        }
 
         // Process data to get unique users with their high scores
         const uniqueUsers: Record<string, any> = {}
@@ -177,24 +212,34 @@ export function DashboardContent({ user }: DashboardContentProps) {
           }
         })
 
-        // Fetch user emails
+        // Fetch user emails from profiles table
         const userIds = Object.keys(uniqueUsers)
         if (userIds.length > 0) {
           const { data: profiles, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('id, email')
+            .from('profiles')
+            .select('id, full_name, email')
             .in('id', userIds)
-            .catch(() => ({ data: null }))
+
+          if (profileError) {
+            console.error(`Error fetching profiles for ${game}:`, profileError?.message ?? profileError)
+          }
 
           if (profiles) {
             userIds.forEach((userId: string) => {
               const profile = profiles.find((p: any) => p.id === userId)
               if (profile) {
-                uniqueUsers[userId].email = profile.email
+                uniqueUsers[userId].email = 
+                  profile.full_name || 
+                  profile.email?.split('@')[0] || 
+                  `User ${userId.slice(0, 8)}`
               } else {
-                // Fallback: get from auth
                 uniqueUsers[userId].email = `User ${userId.slice(0, 8)}`
               }
+            })
+          } else {
+            // Fallback if profiles can't be fetched
+            userIds.forEach((userId: string) => {
+              uniqueUsers[userId].email = `User ${userId.slice(0, 8)}`
             })
           }
         }
@@ -203,8 +248,31 @@ export function DashboardContent({ user }: DashboardContentProps) {
       }
 
       setLeaderboards(leaderboardData)
-    } catch (err) {
-      console.error('Error fetching leaderboards:', err)
+    } catch (err: any) {
+      console.error('Error fetching leaderboards:', err?.message ?? err)
+    }
+  }
+
+  const fetchAchievements = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_achievements')
+        .select('id, unlocked_at, achievements ( name, badge_icon )')
+        .eq('user_id', user.id)
+        .order('unlocked_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching achievements:', error?.message ?? error)
+        setAchievements([])
+        return
+      }
+
+      setAchievements(data ?? [])
+    } catch (err: any) {
+      console.error('Error fetching achievements:', err?.message ?? err)
+      setAchievements([])
+    } finally {
+      setAchievementsLoading(false)
     }
   }
 
@@ -320,11 +388,11 @@ export function DashboardContent({ user }: DashboardContentProps) {
             <StatCard 
               icon={<Trophy size={24} />} 
               label="Highest Score" 
-              value={gameScores.length > 0 ? Math.max(...gameScores.map(g => g.score)) : 0} 
+              value={highestScore} 
               color={secondaryColor} 
             />
             <StatCard icon={<Calendar size={24} />} label="Events Joined" value={registeredEvents.length} color={accentColor} />
-            <StatCard icon={<Target size={24} />} label="Unique Games" value={new Set(gameScores.map(g => g.game_name)).size} color={secondaryColor} />
+            <StatCard icon={<Target size={24} />} label="Rank" value={userRank} color={secondaryColor} />
           </motion.div>
 
           {/* Main Content */}
@@ -348,6 +416,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
                     Profile
                   </h2>
                   <p className="text-sm opacity-50">{user.email}</p>
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold mt-1" style={{ background: `${accentColor}15`, color: accentColor }}>
+                    <Trophy size={12} /> {userRank}
+                  </span>
                 </div>
               </div>
 
@@ -390,9 +461,15 @@ export function DashboardContent({ user }: DashboardContentProps) {
                 </div>
                 <div className="text-center p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
                   <p className="text-lg font-bold" style={{ color: accentColor }}>
-                    {gameScores.length > 0 ? Math.max(...gameScores.map(g => g.score)) : 0}
+                    {highestScore}
                   </p>
                   <p className="text-xs opacity-50">High Score</p>
+                </div>
+                <div className="text-center p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <p className="text-lg font-bold" style={{ color: secondaryColor }}>
+                    {averageScore}
+                  </p>
+                  <p className="text-xs opacity-50">Avg Score</p>
                 </div>
               </div>
             </motion.div>
@@ -623,6 +700,55 @@ export function DashboardContent({ user }: DashboardContentProps) {
                       </p>
                       <p className="text-xs opacity-50">points</p>
                     </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Achievements Section */}
+          <motion.div
+            className="glass rounded-3xl p-6 mt-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.47 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: secondaryColor }}>
+                <Award size={20} />
+                Achievements
+              </h2>
+              <span className="text-sm opacity-60">{achievements.length} unlocked</span>
+            </div>
+
+            {achievementsLoading ? (
+              <div className="text-center py-8 opacity-50">
+                <p className="text-sm">Loading achievements...</p>
+              </div>
+            ) : achievements.length === 0 ? (
+              <div className="text-center py-8">
+                <Award size={48} className="mx-auto mb-4 opacity-30" />
+                <p className="text-sm opacity-50">No achievements yet. Play games and join events to unlock badges.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {achievements.slice(0, 8).map((achievement: any, index: number) => (
+                  <motion.div
+                    key={achievement.id}
+                    className="p-4 rounded-xl text-center"
+                    style={{ background: "rgba(255,255,255,0.03)" }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5 + index * 0.05 }}
+                    whileHover={{ scale: 1.04 }}
+                  >
+                    <div className="text-2xl mb-2">{achievement.achievements?.badge_icon || "🏅"}</div>
+                    <p className="font-semibold text-xs mb-1">{achievement.achievements?.name || "Achievement"}</p>
+                    <p className="text-xs opacity-50">
+                      {achievement.unlocked_at
+                        ? new Date(achievement.unlocked_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })
+                        : ""}
+                    </p>
                   </motion.div>
                 ))}
               </div>

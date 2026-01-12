@@ -1,17 +1,15 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { useTheme } from "@/components/theme-provider"
 import { ParticleNetwork } from "@/components/particle-network"
 import { createClient } from "@/lib/supabase/client"
-import { UserPlus, Mail, Lock, User, ArrowRight, Eye, EyeOff, BookOpen, Calendar, Fingerprint } from "lucide-react"
+import { UserPlus, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-export default function SignUpPage() {
+export default function SignupPage() {
   const { accentColor, secondaryColor } = useTheme()
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
@@ -19,13 +17,14 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [department, setDepartment] = useState("")
   const [studyYear, setStudyYear] = useState("")
-  const [collegeId, setCollegeId] = useState("")
+  const [rollNumber, setRollNumber] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
@@ -43,41 +42,81 @@ export default function SignUpPage() {
     }
 
     if (!department) {
-      setError("Please select a department")
+      setError("Department is required")
       setIsLoading(false)
       return
     }
 
     if (!studyYear) {
-      setError("Please select your study year")
+      setError("Study year is required")
       setIsLoading(false)
       return
     }
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/profile`,
           data: {
             full_name: fullName,
-            role: "student",
-            department: department,
+            department,
             study_year: studyYear,
-            college_id: collegeId || null,
+            roll_number: rollNumber || null,
           },
         },
       })
 
-      if (error) throw error
-      router.push("/auth/sign-up-success")
+      if (signUpError) throw signUpError
+      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center px-4">
+        <div className="noise-overlay" />
+        <ParticleNetwork />
+
+        <motion.div
+          className="relative z-10 w-full max-w-md text-center"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <div className="glass rounded-3xl p-8">
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{ background: `${accentColor}20` }}
+            >
+              <Mail size={40} style={{ color: accentColor }} />
+            </div>
+            <h1 className="text-2xl font-bold mb-4" style={{ color: accentColor }}>
+              Check Your Email
+            </h1>
+            <p className="text-sm opacity-70 mb-6">
+              We've sent a verification link to <strong>{email}</strong>. Please check your inbox and click the link
+              to verify your account.
+            </p>
+            <Link href="/auth/login">
+              <motion.button
+                className="px-6 py-3 rounded-xl text-sm font-bold"
+                style={{ background: accentColor, color: "#030303" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Go to Login
+              </motion.button>
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -112,7 +151,7 @@ export default function SignUpPage() {
           </motion.div>
         </Link>
 
-        {/* Sign Up Card */}
+        {/* Signup Card */}
         <div className="glass rounded-3xl p-8">
           <div className="text-center mb-8">
             <div
@@ -122,12 +161,12 @@ export default function SignUpPage() {
               <UserPlus size={32} style={{ color: secondaryColor }} />
             </div>
             <h1 className="text-2xl font-bold mb-2" style={{ color: accentColor }}>
-              Join the Club
+              Create Account
             </h1>
-            <p className="text-sm opacity-50">Create your profile account to get started</p>
+            <p className="text-sm opacity-50">Join the Robotics Club community</p>
           </div>
 
-          <form onSubmit={handleSignUp} className="space-y-5">
+          <form onSubmit={handleSignup} className="space-y-6">
             {/* Full Name */}
             <div>
               <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Full Name</label>
@@ -154,60 +193,10 @@ export default function SignUpPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="engineer@heritage.edu"
+                  placeholder="your.email@example.com"
                   className="w-full pl-12 pr-4 py-4 rounded-xl glass text-sm focus:outline-none"
                   style={{ border: `1px solid ${accentColor}20` }}
                   required
-                />
-              </div>
-            </div>
-
-            {/* Department */}
-            <div>
-              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Department</label>
-              <div className="relative">
-                <BookOpen size={18} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" />
-                <input
-                  type="text"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="e.g., Computer Science"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl glass text-sm focus:outline-none"
-                  style={{ border: `1px solid ${accentColor}20` }}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Study Year */}
-            <div>
-              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Study Year</label>
-              <div className="relative">
-                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" />
-                <input
-                  type="text"
-                  value={studyYear}
-                  onChange={(e) => setStudyYear(e.target.value)}
-                  placeholder="e.g., 2nd Year"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl glass text-sm focus:outline-none"
-                  style={{ border: `1px solid ${accentColor}20` }}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* College ID (Optional) */}
-            <div>
-              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">College ID</label>
-              <div className="relative">
-                <Fingerprint size={18} className="absolute left-4 top-1/2 -translate-y-1/2 opacity-50" />
-                <input
-                  type="text"
-                  value={collegeId}
-                  onChange={(e) => setCollegeId(e.target.value)}
-                  placeholder="Enter your college ID"
-                  className="w-full pl-12 pr-4 py-4 rounded-xl glass text-sm focus:outline-none"
-                  style={{ border: `1px solid ${accentColor}20` }}
                 />
               </div>
             </div>
@@ -253,6 +242,57 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            {/* Department */}
+            <div>
+              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Department</label>
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="w-full px-4 py-4 rounded-xl glass text-sm focus:outline-none"
+                style={{ border: `1px solid ${accentColor}20` }}
+                required
+              >
+                <option value="">Select Department</option>
+                <option value="CSE">Computer Science & Engineering</option>
+                <option value="ECE">Electronics & Communication Engineering</option>
+                <option value="ME">Mechanical Engineering</option>
+                <option value="EE">Electrical Engineering</option>
+                <option value="CE">Civil Engineering</option>
+                <option value="IT">Information Technology</option>
+              </select>
+            </div>
+
+            {/* Study Year */}
+            <div>
+              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Study Year</label>
+              <select
+                value={studyYear}
+                onChange={(e) => setStudyYear(e.target.value)}
+                className="w-full px-4 py-4 rounded-xl glass text-sm focus:outline-none"
+                style={{ border: `1px solid ${accentColor}20` }}
+                required
+              >
+                <option value="">Select Study Year</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            </div>
+
+            {/* Roll Number */}
+            <div>
+              <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">College Roll Number</label>
+              <input
+                type="text"
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                placeholder="Your roll number"
+                className="w-full px-4 py-4 rounded-xl glass text-sm focus:outline-none"
+                style={{ border: `1px solid ${accentColor}20` }}
+              />
+            </div>
+
             {/* Error */}
             {error && (
               <motion.p
@@ -285,7 +325,7 @@ export default function SignUpPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm opacity-50">
-              Already a member?{" "}
+              Already have an account?{" "}
               <Link href="/auth/login" className="underline underline-offset-4" style={{ color: accentColor }}>
                 Sign in
               </Link>

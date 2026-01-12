@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { ParticleNetwork } from "@/components/particle-network"
 import { RobotWatcher } from "@/components/robot-watcher"
-import { Calendar, Bell, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
+import { Calendar, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -25,10 +25,6 @@ interface Event {
 
 export default function EventsPage() {
   const { accentColor, secondaryColor } = useTheme()
-  const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<"idle" | "success" | "error" | "already-subscribed">("idle")
-  const [message, setMessage] = useState("")
   const [events, setEvents] = useState<Event[]>([])
   const [eventsLoading, setEventsLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
@@ -114,44 +110,6 @@ export default function EventsPage() {
       setEvents([])
     } finally {
       setEventsLoading(false)
-    }
-  }
-
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!email) return
-
-    setLoading(true)
-    setStatus("idle")
-
-    try {
-      const response = await fetch("/api/subscribe-notification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, type: "events" }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        if (data.alreadySubscribed) {
-          setStatus("already-subscribed")
-          setMessage("You're already subscribed!")
-        } else {
-          setStatus("success")
-          setMessage("Check your email for confirmation!")
-          setEmail("")
-        }
-      } else {
-        setStatus("error")
-        setMessage(data.error || "Failed to subscribe")
-      }
-    } catch (err) {
-      setStatus("error")
-      setMessage("Something went wrong. Please try again.")
-      console.error(err)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -324,89 +282,6 @@ export default function EventsPage() {
               )})}
             </motion.div>
           )}
-
-          {/* Notification Section */}
-          <motion.div
-            className="glass rounded-2xl p-6 mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Bell size={20} style={{ color: secondaryColor }} />
-              <span className="text-sm uppercase tracking-wider">Get Notified When We Launch</span>
-            </div>
-
-            {status === "success" && (
-              <motion.div
-                className="flex items-center gap-3 p-3 rounded-xl mb-4"
-                style={{ background: "#00ff8820" }}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <CheckCircle size={18} style={{ color: "#00ff88" }} />
-                <span className="text-sm" style={{ color: "#00ff88" }}>
-                  {message}
-                </span>
-              </motion.div>
-            )}
-
-            {status === "already-subscribed" && (
-              <motion.div
-                className="flex items-center gap-3 p-3 rounded-xl mb-4"
-                style={{ background: "#ffaa0020" }}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <AlertCircle size={18} style={{ color: "#ffaa00" }} />
-                <span className="text-sm" style={{ color: "#ffaa00" }}>
-                  {message}
-                </span>
-              </motion.div>
-            )}
-
-            {status === "error" && (
-              <motion.div
-                className="flex items-center gap-3 p-3 rounded-xl mb-4"
-                style={{ background: "#ff446620" }}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <AlertCircle size={18} style={{ color: "#ff4466" }} />
-                <span className="text-sm" style={{ color: "#ff4466" }}>
-                  {message}
-                </span>
-              </motion.div>
-            )}
-
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 disabled:opacity-50"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: `1px solid ${accentColor}30`,
-                }}
-              />
-              <motion.button
-                type="submit"
-                disabled={loading || !email}
-                className="px-6 py-3 rounded-xl text-sm uppercase tracking-wider font-bold disabled:opacity-50"
-                style={{
-                  background: `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
-                  color: "#030303",
-                }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {loading ? "Subscribing..." : "Notify Me"}
-              </motion.button>
-            </form>
-          </motion.div>
         </div>
       </main>
 

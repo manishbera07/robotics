@@ -1,14 +1,11 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { useTheme } from "@/components/theme-provider"
 import { ParticleNetwork } from "@/components/particle-network"
 import { createClient } from "@/lib/supabase/client"
-import { loginOrganizer } from "@/lib/organizer-auth"
-import { Fingerprint, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react"
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Fingerprint } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -19,31 +16,23 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [loginType, setLoginType] = useState<"student" | "organizer">("student")
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent, loginType: "student" | "organizer") => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      if (loginType === "organizer") {
-        const session = loginOrganizer(email, password)
-        if (!session) {
-          throw new Error("Invalid organizer credentials")
-        }
-        router.push("/organizer/dashboard")
-      } else {
-        const supabase = createClient()
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-        if (error) throw error
-        router.push("/dashboard")
-      }
+      if (error) throw error
+      router.push("/profile")
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
@@ -83,43 +72,22 @@ export default function LoginPage() {
           </motion.div>
         </Link>
 
-        {/* Login Type Selector */}
-        <div className="flex gap-4 mb-6">
-          <motion.button
-            onClick={() => setLoginType("student")}
-            className="flex-1 py-3 rounded-xl text-sm uppercase tracking-wider font-bold transition-all"
-            style={{
-              background: loginType === "student" ? `${accentColor}` : `${accentColor}15`,
-              color: loginType === "student" ? "#030303" : accentColor,
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Student Login
-          </motion.button>
-        </div>
-
         {/* Login Card */}
         <div className="glass rounded-3xl p-8">
           <div className="text-center mb-8">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ background: loginType === "student" ? `${accentColor}15` : `${secondaryColor}15` }}
+              style={{ background: `${accentColor}15` }}
             >
-              <Fingerprint size={32} style={{ color: loginType === "student" ? accentColor : secondaryColor }} />
+              <Fingerprint size={32} style={{ color: accentColor }} />
             </div>
-            <h1
-              className="text-2xl font-bold mb-2"
-              style={{ color: loginType === "student" ? accentColor : secondaryColor }}
-            >
-              {loginType === "student" ? "Profile Access" : "Command Center"}
+            <h1 className="text-2xl font-bold mb-2" style={{ color: accentColor }}>
+              Welcome Back
             </h1>
-            <p className="text-sm opacity-50">
-              {loginType === "student" ? "Access your profile dashboard" : "Manage events & merchandise"}
-            </p>
+            <p className="text-sm opacity-50">Sign in to access your profile</p>
           </div>
 
-          <form onSubmit={(e) => handleLogin(e, loginType)} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             {/* Email */}
             <div>
               <label className="text-xs uppercase tracking-wider opacity-50 mb-2 block">Email</label>
@@ -129,7 +97,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={loginType === "student" ? "engineer@heritage.edu" : "admin@rchit.edu"}
+                  placeholder="your.email@example.com"
                   className="w-full pl-12 pr-4 py-4 rounded-xl glass text-sm focus:outline-none"
                   style={{ border: `1px solid ${accentColor}20` }}
                   required
@@ -159,8 +127,12 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <div className="flex justify-end">
-                <Link href="/auth/forgot-password" className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ color: accentColor }}>
+              <div className="flex justify-end mt-2">
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs opacity-50 hover:opacity-100 transition-opacity"
+                  style={{ color: accentColor }}
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -184,27 +156,23 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full py-4 rounded-xl text-sm uppercase tracking-wider font-bold flex items-center justify-center gap-2"
               style={{
-                background: `linear-gradient(135deg, ${loginType === "student" ? accentColor : secondaryColor}, ${loginType === "student" ? secondaryColor : accentColor})`,
+                background: `linear-gradient(135deg, ${accentColor}, ${secondaryColor})`,
                 color: "#030303",
                 opacity: isLoading ? 0.7 : 1,
               }}
               whileHover={isLoading ? {} : { scale: 1.02 }}
               whileTap={isLoading ? {} : { scale: 0.98 }}
             >
-              {isLoading
-                ? "AUTHENTICATING..."
-                : loginType === "student"
-                  ? "ACCESS PROFILE DASHBOARD"
-                  : "ACCESS COMMAND CENTER"}
+              {isLoading ? "SIGNING IN..." : "SIGN IN"}
               {!isLoading && <ArrowRight size={18} />}
             </motion.button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm opacity-50">
-              New recruit?{" "}
-              <Link href="/auth/sign-up" className="underline underline-offset-4" style={{ color: accentColor }}>
-                Create account
+              Don't have an account?{" "}
+              <Link href="/auth/signup" className="underline underline-offset-4" style={{ color: accentColor }}>
+                Sign up
               </Link>
             </p>
           </div>

@@ -1,16 +1,36 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect, memo } from "react"
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import { useTheme } from "./theme-provider"
-import { Monitor, Moon, Calendar, ShoppingBag, Gamepad2, Fingerprint, Menu, X, Users, Images } from "lucide-react"
-import { UserMenu } from "./user-menu"
+import { Monitor, Moon, Calendar, ShoppingBag, Gamepad2, Menu, X, Users, Images, LogIn, User as UserIcon } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
 
-export function Navbar() {
+export const Navbar = memo(function Navbar() {
   const { theme, toggleTheme, accentColor } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const router = useRouter()
+  const supabase = createClient()
+  const { scrollY } = useScroll()
+  const navBackground = useTransform(scrollY, [0, 50], ["rgba(3, 3, 3, 0)", "rgba(3, 3, 3, 0.8)"])
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const navItems = [
     { icon: <Calendar size={16} />, label: "EVENTS", href: "/events" },
@@ -23,41 +43,42 @@ export function Navbar() {
   return (
     <>
       <motion.nav
-        className="fixed top-0 left-0 right-0 z-50 px-4 py-3 md:px-8 md:py-4"
+        className="fixed top-0 left-0 right-0 z-50 px-4 py-3 md:px-8 md:py-4 backdrop-blur-md"
+        style={{ background: navBackground }}
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="max-w-7xl mx-auto glass rounded-2xl px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto glass rounded-2xl px-3 py-2 md:px-6 md:py-4 flex items-center justify-between">
           {/* Logo */}
           <Link href="/">
             <motion.div
-              className="flex items-center gap-3"
+              className="flex items-center gap-2 md:gap-3 min-w-0"
               whileHover={{ scale: 1.02 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img
                   src="/Logo Symbol_Robotics Club HITK.png"
                   alt="Robotics Club Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="hidden sm:block">
-                <p className="text-xs uppercase tracking-wider opacity-60">Robotics Club</p>
-                <p className="text-sm font-bold tracking-wide" style={{ color: accentColor }}>
-                  Heritage Institute of Technology, Kolkata
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] sm:text-xs uppercase tracking-wide sm:tracking-wider opacity-70 sm:opacity-60 truncate">Robotics Club</p>
+                <p className="text-xs sm:text-sm md:text-sm font-bold tracking-wide truncate" style={{ color: accentColor }}>
+                  HITK
                 </p>
               </div>
             </motion.div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 lg:gap-2 flex-wrap justify-end">
             {/* Theme Toggle */}
             <motion.button
               onClick={toggleTheme}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm uppercase tracking-wide glass glass-hover"
+              className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-xl text-xs md:text-sm uppercase tracking-wide glass glass-hover whitespace-nowrap"
               style={{ color: accentColor }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -65,7 +86,7 @@ export function Navbar() {
               <motion.div animate={{ rotate: theme === "cyber" ? 0 : 180 }} transition={{ duration: 0.3 }}>
                 {theme === "cyber" ? <Monitor size={16} /> : <Moon size={16} />}
               </motion.div>
-              <span>{theme === "cyber" ? "CYBER" : "STEALTH"}</span>
+              <span className="hidden lg:inline">{theme === "cyber" ? "CYBER" : "STEALTH"}</span>
             </motion.button>
 
             {navItems.map((item) => (
@@ -78,7 +99,32 @@ export function Navbar() {
               />
             ))}
 
-            <UserMenu accentColor={accentColor} />
+            {/* Auth Buttons */}
+            {user ? (
+              <Link href="/profile">
+                <motion.div
+                  className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-xl text-xs md:text-sm uppercase tracking-wide glass glass-hover whitespace-nowrap"
+                  style={{ color: accentColor }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <UserIcon size={16} />
+                  <span className="hidden sm:inline">PROFILE</span>
+                </motion.div>
+              </Link>
+            ) : (
+              <Link href="/auth/login">
+                <motion.div
+                  className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 rounded-xl text-xs md:text-sm uppercase tracking-wide whitespace-nowrap"
+                  style={{ background: accentColor, color: "#030303" }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <LogIn size={16} />
+                  <span className="hidden sm:inline">LOGIN</span>
+                </motion.div>
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -96,8 +142,9 @@ export function Navbar() {
               className="p-2 rounded-xl glass"
               style={{ color: accentColor }}
               whileTap={{ scale: 0.95 }}
+              aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </motion.button>
           </div>
         </div>
@@ -142,14 +189,28 @@ export function Navbar() {
                     </Link>
                   </motion.div>
                 ))}
+                
+                {/* Mobile Auth Button */}
                 <motion.div
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: navItems.length * 0.1 }}
                 >
-                  <div className="mt-2">
-                    <UserMenu accentColor={accentColor} />
-                  </div>
+                  {user ? (
+                    <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-xl glass-hover" style={{ color: accentColor }}>
+                        <UserIcon size={16} />
+                        <span className="text-sm uppercase tracking-wide">PROFILE</span>
+                      </div>
+                    </Link>
+                  ) : (
+                    <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: accentColor, color: "#030303" }}>
+                        <LogIn size={16} />
+                        <span className="text-sm uppercase tracking-wide font-bold">LOGIN</span>
+                      </div>
+                    </Link>
+                  )}
                 </motion.div>
               </div>
             </motion.div>
@@ -158,9 +219,9 @@ export function Navbar() {
       </AnimatePresence>
     </>
   )
-}
+})
 
-function NavLink({
+const NavLink = memo(function NavLink({
   icon,
   label,
   href,
@@ -174,14 +235,15 @@ function NavLink({
   return (
     <Link href={href}>
       <motion.div
-        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm uppercase tracking-wide glass glass-hover"
+        className="flex items-center gap-1 px-2 lg:gap-2 lg:px-4 py-2 rounded-xl text-xs lg:text-sm uppercase tracking-wide glass glass-hover whitespace-nowrap"
         style={{ color: accentColor }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        title={label}
       >
         {icon}
-        <span>{label}</span>
+        <span className="hidden lg:inline">{label}</span>
       </motion.div>
     </Link>
   )
-}
+})

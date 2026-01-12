@@ -1,12 +1,15 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { motion, useInView } from "framer-motion"
+import { useRef, memo } from "react"
 import { useTheme } from "./theme-provider"
 import { Instagram, Linkedin, Mail, MapPin } from "lucide-react"
 import Link from "next/link"
 
-export function Footer() {
+export const Footer = memo(function Footer() {
   const { accentColor, secondaryColor } = useTheme()
+  const footerRef = useRef(null)
+  const isInView = useInView(footerRef, { once: false, amount: 0.3 })
 
   const socialLinks = [
     { icon: Instagram, href: "https://www.instagram.com/robotics_hitk?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==", label: "Instagram" },
@@ -22,7 +25,7 @@ export function Footer() {
   ]
 
   return (
-    <footer className="relative py-16 px-4 border-t border-border/50">
+    <footer className="relative py-16 px-4 border-t border-border/50" ref={footerRef}>
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           {/* Brand */}
@@ -122,4 +125,4 @@ export function Footer() {
       </div>
     </footer>
   )
-}
+})

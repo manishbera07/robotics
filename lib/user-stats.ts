@@ -57,7 +57,10 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
       .select('score')
       .eq('user_id', userId)
 
-    if (scoresError) throw scoresError
+    if (scoresError) {
+      console.error('Error fetching game scores:', scoresError)
+      throw scoresError
+    }
 
     // Get event registrations
     const { data: eventRegs, error: eventsError } = await supabase
@@ -65,7 +68,9 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
       .select('id')
       .eq('user_id', userId)
 
-    if (eventsError) throw eventsError
+    if (eventsError && eventsError.code !== 'PGRST116') {
+      console.error('Error fetching events:', eventsError)
+    }
 
     // Get achievements
     const { data: achievements, error: achievementsError } = await supabase
@@ -73,18 +78,28 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
       .select('id')
       .eq('user_id', userId)
 
-    if (achievementsError) throw achievementsError
+    if (achievementsError && achievementsError.code !== 'PGRST116') {
+      console.error('Error fetching achievements:', achievementsError)
+    }
 
-    // Get user email
-    const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId)
-    if (userError) throw userError
+    // Get user email - try to get current user first
+    let email = 'Unknown'
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    
+    if (currentUser && currentUser.id === userId) {
+      email = currentUser.email || 'Unknown'
+    } else {
+      // For other users, we need to query from a users metadata table or use a placeholder
+      // Since we don't have admin access, we'll use a placeholder for now
+      email = `User ${userId.substring(0, 8)}`
+    }
 
     const scores = gameScores || []
     const totalXP = scores.reduce((sum, s) => sum + calculateXPFromScore(s.score), 0)
 
     return {
       userId,
-      email: user?.email || 'Unknown',
+      email,
       totalGamesPlayed: scores.length,
       highestScore: scores.length > 0 ? Math.max(...scores.map(s => s.score)) : 0,
       averageScore: scores.length > 0 ? Math.round(scores.reduce((sum, s) => sum + s.score, 0) / scores.length) : 0,
@@ -93,8 +108,10 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
       achievements: achievements?.length || 0,
       eventsAttended: eventRegs?.length || 0,
     }
-  } catch (err) {
-    console.error('Error fetching user stats:', err)
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error fetching user stats:', err)
+    }
     return null
   }
 }
@@ -114,11 +131,20 @@ export async function getGameStats(gameName: string, userId?: string): Promise<G
 
     const { data, error } = await query
 
-    if (error) throw error
-    if (!data || data.length === 0) return null
+    if (error) {
+      // Quietly handle errors; avoid client-side logging
+      return null
+    }
+    
+    if (!data || data.length === 0) {
+      // No scores yet - this is normal, not an error
+      return null
+    }
 
-    const scores = data.map(d => d.score)
-    const times = data.map(d => d.time_taken).filter(t => t !== null)
+    const scores = data.map(d => d.score).filter(s => s != null)
+    const times = data.map(d => d.time_taken).filter(t => t !== null && t !== undefined)
+
+    if (scores.length === 0) return null
 
     return {
       gameName,
@@ -129,8 +155,8 @@ export async function getGameStats(gameName: string, userId?: string): Promise<G
       totalTimePlayed: times.reduce((a, b) => a + (b || 0), 0),
       bestTime: times.length > 0 ? Math.min(...times.filter(t => t > 0)) : undefined,
     }
-  } catch (err) {
-    console.error('Error fetching game stats:', err)
+  } catch (err: any) {
+    // Quietly handle exceptions; avoid client-side logging
     return null
   }
 }
@@ -171,8 +197,8 @@ export async function getWeeklyLeaderboard(gameName: string): Promise<WeeklyStat
       userId: d.user_id,
       email: userMap[d.user_id] || 'Anonymous',
     }))
-  } catch (err) {
-    console.error('Error fetching weekly leaderboard:', err)
+  } catch (err: any) {
+    // Quietly handle exceptions; avoid client-side logging
     return []
   }
 }
@@ -197,8 +223,10 @@ export async function getAllUserStats(): Promise<UserStats[]> {
 
     return stats.filter((s): s is UserStats => s !== null)
       .sort((a, b) => b.totalXP - a.totalXP)
-  } catch (err) {
-    console.error('Error fetching all user stats:', err)
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error fetching all user stats:', err)
+    }
     return []
   }
 }
@@ -225,8 +253,10 @@ export async function getAchievements(userId: string) {
 
     if (error) throw error
     return data || []
-  } catch (err) {
-    console.error('Error fetching achievements:', err)
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error fetching achievements:', err)
+    }
     return []
   }
 }
@@ -261,7 +291,110 @@ export async function unlockAchievement(userId: string, achievementName: string)
     }
 
     return data?.[0] || null
-  } catch (err) {
-    console.error('Error unlocking achievement:', err)
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error unlocking achievement:', err)
+    }
+  }
+}
+
+// Get individual game scores for a user
+export async function getUserGameScores(userId: string, gameName?: string) {
+  try {
+    const supabase = createClient()
+
+    let query = supabase
+      .from('game_scores')
+      .select('*')
+      .eq('user_id', userId)
+      .order('completed_at', { ascending: false })
+
+    if (gameName) {
+      query = query.eq('game_name', gameName)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      // Quietly handle query errors
+      return []
+    }
+    return data || []
+  } catch (_err: any) {
+    // Quietly handle exceptions
+    return []
+  }
+}
+
+// Get user's position in overall leaderboard
+export async function getUserLeaderboardPosition(userId: string): Promise<{
+  position: number
+  totalPlayers: number
+  percentile: number
+} | null> {
+  try {
+    const allStats = await getAllUserStats()
+    const userIndex = allStats.findIndex(s => s.userId === userId)
+    
+    if (userIndex === -1) return null
+
+    return {
+      position: userIndex + 1,
+      totalPlayers: allStats.length,
+      percentile: Math.round(((allStats.length - userIndex) / allStats.length) * 100)
+    }
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error getting leaderboard position:', err)
+    }
+    return null
+  }
+}
+
+// Get user's position in a specific game leaderboard
+export async function getUserGameLeaderboardPosition(userId: string, gameName: string): Promise<{
+  position: number
+  totalPlayers: number
+  highScore: number
+} | null> {
+  try {
+    const supabase = createClient()
+
+    // Get all unique user scores for this game
+    const { data, error } = await supabase
+      .from('game_scores')
+      .select('user_id, score')
+      .eq('game_name', gameName)
+      .order('score', { ascending: false })
+
+    if (error) throw error
+    if (!data) return null
+
+    // Get highest score per user
+    const userHighScores: Record<string, number> = {}
+    data.forEach(entry => {
+      if (!userHighScores[entry.user_id] || userHighScores[entry.user_id] < entry.score) {
+        userHighScores[entry.user_id] = entry.score
+      }
+    })
+
+    // Sort by score
+    const sortedUsers = Object.entries(userHighScores)
+      .sort(([, a], [, b]) => b - a)
+
+    const userIndex = sortedUsers.findIndex(([uid]) => uid === userId)
+    
+    if (userIndex === -1) return null
+
+    return {
+      position: userIndex + 1,
+      totalPlayers: sortedUsers.length,
+      highScore: sortedUsers[userIndex][1]
+    }
+  } catch (err: any) {
+    if (err?.message || err?.code) {
+      console.error('Error getting game leaderboard position:', err)
+    }
+    return null
   }
 }
