@@ -42,16 +42,13 @@ export const VideoSection = memo(function VideoSection() {
         >
           {/* Video Container */}
           <div className="relative aspect-video overflow-hidden">
-            {/* Native video element with controls */}
-            <video
-              className="w-full h-full object-cover"
-              playsInline
-              controls
-              preload="metadata"
-            >
-              <source src="/videos/robot-video-compressed.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            {/* Google Drive video embed */}
+            <iframe
+              className="w-full h-full"
+              src="https://drive.google.com/file/d/19ifI6OGVik7D5vH9ReJYSsU8g7GTNRlA/preview"
+              allow="autoplay"
+              allowFullScreen
+            />
 
             {/* Overlay decorations */}
             <div className="absolute inset-0 pointer-events-none">
