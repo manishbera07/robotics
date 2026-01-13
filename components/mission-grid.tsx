@@ -43,7 +43,7 @@ const missions = [
 const features = [
   { icon: Sparkles, title: "Innovation Lab", description: "Access to cutting-edge tools and equipment" },
   { icon: Trophy, title: "Competitions", description: "National and international robotics championships" },
-  { icon: Users, title: "Community", description: "Network with 500+ passionate engineers" },
+  { icon: Users, title: "Community", description: "Network with passionate engineers" },
 ]
 
 export function MissionGrid() {
@@ -57,9 +57,6 @@ export function MissionGrid() {
         {/* Section Header */}
         <motion.div
           className="text-center mb-12 sm:mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
         >
           <motion.span
             className="inline-block px-3 sm:px-4 py-1 rounded-full glass text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest mb-3 sm:mb-4"
@@ -89,19 +86,11 @@ export function MissionGrid() {
         {/* Features Row */}
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
         >
           {features.map((feature, index) => (
             <motion.div
               key={index}
               className="glass rounded-2xl p-6 flex items-start gap-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 + index * 0.1 }}
               whileHover={{ scale: 1.02, borderColor: `${accentColor}30` }}
             >
               <div
@@ -142,10 +131,6 @@ const MissionCard = memo(function MissionCard({
       <motion.div
         ref={cardRef}
         className="group relative rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 overflow-hidden glass cursor-pointer h-full"
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        whileInView={{ opacity: 1, y: 0, scale: 1 }}
-        viewport={{ once: false, amount: 0.3 }}
-        transition={{ delay: index * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         whileHover={{ scale: 1.03, y: -8, boxShadow: `0 20px 40px ${accentColor}25` }}
       >
         {/* Background gradient on hover */}
@@ -168,7 +153,7 @@ const MissionCard = memo(function MissionCard({
               border: `1px solid ${accentColor}20`,
             }}
             whileHover={{ rotate: [0, -10, 10, 0] }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.2 }}
           >
             <Icon size={24} className="sm:w-7 sm:h-7" style={{ color: accentColor }} />
           </motion.div>

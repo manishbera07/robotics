@@ -14,7 +14,6 @@ export const HeroSection = memo(function HeroSection() {
   const [displayText, setDisplayText] = useState("")
   const [isDecoding, setIsDecoding] = useState(true)
   const { scrollY } = useScroll()
-  const yTransform = useTransform(scrollY, [0, 300], [0, 100])
 
   const decodeText = useCallback(() => {
     let iteration = 0
@@ -47,7 +46,7 @@ export const HeroSection = memo(function HeroSection() {
   }, [decodeText])
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 pt-20 pb-10 overflow-hidden">
+    <section className="relative min-h-screen flex items-center justify-center px-4 pt-20 pb-10">
       {/* Animated gradient orbs with parallax - Optimized */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
@@ -68,17 +67,17 @@ export const HeroSection = memo(function HeroSection() {
 
       <div className="max-w-6xl mx-auto text-center relative z-10">
         <motion.div
-          style={{ y: yTransform }}
+        
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.35 }}
         >
           {/* Badge */}
           <motion.div
             className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full glass mb-6 sm:mb-8 mt-8 sm:mt-12"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: 0.1, duration: 0.25 }}
           >
             <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full animate-pulse flex-shrink-0" style={{ background: secondaryColor }} />
             <span className="text-xs sm:text-sm uppercase tracking-wide sm:tracking-wider opacity-90">
@@ -107,7 +106,7 @@ export const HeroSection = memo(function HeroSection() {
             className="text-base sm:text-lg md:text-2xl lg:text-3xl font-light tracking-wide mb-6 opacity-80 px-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.8 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.15 }}
           >
             at Heritage Institute of Technology, Kolkata
           </motion.h2>
@@ -117,7 +116,7 @@ export const HeroSection = memo(function HeroSection() {
             className="text-xs sm:text-sm md:text-base opacity-50 mb-12 max-w-2xl mx-auto tracking-wide leading-relaxed px-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.5 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.2 }}
           >
             The Official Robotics & Automation Hub of Heritage Institute of Technology, Kolkata. Where innovation meets
             engineering excellence.
@@ -128,7 +127,7 @@ export const HeroSection = memo(function HeroSection() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
+            transition={{ delay: 0.25 }}
           >
             <Link href="/events" className="w-full sm:w-auto">
               <motion.button
@@ -147,7 +146,7 @@ export const HeroSection = memo(function HeroSection() {
                 <motion.div
                   className="absolute inset-0 opacity-0 group-hover:opacity-100"
                   style={{ background: `linear-gradient(135deg, ${secondaryColor}, ${accentColor})` }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.2 }}
                 />
               </motion.button>
             </Link>
@@ -164,44 +163,9 @@ export const HeroSection = memo(function HeroSection() {
             </Link>
           </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            className="mt-16 sm:mt-20 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-xl mx-auto px-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1 }}
-          >
-            {[
-              { value: "500+", label: "Members" },
-              { value: "50+", label: "Events" },
-              { value: "25+", label: "Projects" },
-            ].map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                className="text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2 + index * 0.1 }}
-              >
-                <p className="text-xl sm:text-2xl md:text-4xl font-bold" style={{ color: accentColor }}>
-                  {stat.value}
-                </p>
-                <p className="text-[10px] sm:text-xs uppercase tracking-wider opacity-50 mt-1">{stat.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
+          {/* Stats removed per request */}
 
-          {/* Scroll indicator */}
-          <motion.div
-            className="absolute bottom-8 left-1/2 -translate-x-1/2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            transition={{ delay: 1.5 }}
-          >
-            <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}>
-              <ChevronDown size={24} style={{ color: accentColor }} />
-            </motion.div>
-          </motion.div>
+          {/* Scroll indicator removed per request */}
         </motion.div>
       </div>
     </section>

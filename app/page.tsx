@@ -17,6 +17,7 @@ const RobotWatcher = dynamic(() => import("@/components/robot-watcher").then(mod
   ssr: false,
 })
 const Footer = dynamic(() => import("@/components/footer").then(mod => ({ default: mod.Footer })))
+const VideoSection = dynamic(() => import("@/components/video-section").then(mod => ({ default: mod.VideoSection })))
 const ScrollIndicator = dynamic(() => import("@/components/scroll-indicator").then(mod => ({ default: mod.ScrollIndicator })), {
   ssr: false,
 })
@@ -50,6 +51,7 @@ export default function Home() {
             </Suspense>
           </main>
           <Suspense fallback={null}>
+            <VideoSection />
             <Footer />
             <RobotWatcher />
           </Suspense>
